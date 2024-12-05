@@ -6,25 +6,24 @@
  */
 
 // Pin Definitions
-const int SOUND_SENSOR = 7;    // LM393 Sound Sensor connected to analog pin A5
-const int RELAY_SIG = 4;        // Relay signal pin
+const int SOUND_SENSOR = A0;    // LM393 Sound Sensor connected to analog pin A0
+const int RELAY_SIG = 4;        // Relay power pin
 const int IR_RECEIVE_PIN = 5;   // IR receiver pin
 
 // State Variables
 boolean OUTLET_STATUS = false;
 int CALIBRATION_TIME = 5000;
-
-int clap_threshold = -1;  // Initial threshold (to be calibrated)
+boolean SOUND_ACTIVATED = false;
+int clap_threshold = 100;  // Initial threshold (to be calibrated)
 
 void setup() {
     Serial.begin(9600);
     
     // Configure pins
     pinMode(RELAY_SIG, OUTPUT);
-    pinMode(SOUND_SENSOR, INPUT);
+   // pinMode(SOUND_SENSOR, INPUT);
     
-    // Initialize infrared sensor module and sound sensor module
-    //calibrateSoundSensor();
+    // Initialize infrared sensor module
     IrReceiver.begin(IR_RECEIVE_PIN, ENABLE_LED_FEEDBACK);
     Serial.println("IR Receiver Ready");
 }
@@ -32,11 +31,17 @@ void setup() {
 
 void loop() {
     // Read sound sensor
-    int sound_sensor_output = digitalRead(SOUND_SENSOR);
+    int sound_sensor_output = analogRead(SOUND_SENSOR);
     Serial.println(sound_sensor_output);
 
+    // Calibrate sound sensor whenever its first switched on
+    if (sound_sensor_output > 20 && SOUND_ACTIVATED == false) {
+      calibrateSoundSensor();
+      SOUND_ACTIVATED = true;
+    }
+    
     // Sound-based control
-    if (sound_sensor_output < clap_threshold) {
+    if (sound_sensor_output > clap_threshold) {
         toggleOutlet();
         delay(100); // Debounce delay
     }
@@ -88,7 +93,7 @@ void calibrateSoundSensor() {
     }
     
     int average = sum / num_readings;
-    clap_threshold = average + 10;
+    clap_threshold = average + 15;
   
     Serial.println("Calibration complete. Thresholds set to: ");
     Serial.println(clap_threshold);    
